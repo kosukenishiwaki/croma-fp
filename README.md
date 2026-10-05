@@ -10,7 +10,7 @@ The GPU backend is implemented with CUDA and has been tested on the Leonardo sup
 
 
 ![CROMA workflow](workflow.png)
-
+![CROMA spectra](spectra.png)
 
 
 ## Features
