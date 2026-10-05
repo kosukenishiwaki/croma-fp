@@ -1,45 +1,116 @@
-# CROMA: Fokker-Planck cosmic ray spectral solver in post-processing astrophysical simulations
+# CROMA: Fokker--Planck cosmic-ray spectral solver for astrophysical simulations
 
 Welcome!
 
-`croma` provides parallel calculations of the spectral evolution of cosmic-ray (CR) protons and electrons by solving the Fokker-Planck equation. It includes first- and second-order Fermi (re)acceleration and the production of secondary particles through hadronic interactions.
+CROMA is a parallel Fokker--Planck (FP) solver for modeling the spectral evolution of cosmic-ray (CR) electrons and protons in post-processing astrophysical simulations.
 
-CR evolution is modeled as a sub-grid physics under MHD backgrounds. Currently, `croma` uses MHD data stored in tracer-particle outputs from other simulations (e.g., Enzo).
-This code was originally designed to simulate non-thermal, multi-messenger emission in the large-scale structure (clusters and filaments).
+The code evolves CR spectra along Lagrangian tracer trajectories using background plasma quantities supplied by magnetohydrodynamic (MHD) simulations. It supports both CPU and NVIDIA GPU backends and is designed for large tracer-particle datasets in galaxy clusters and cosmic filaments.
 
-GPU-offloading is implemented using CUDA, and has been tested on Leonardo supercomputer at CINECA.
+The GPU backend is implemented with CUDA and has been tested on the Leonardo supercomputer at CINECA.
 
-## Overview
 
-FP physics:
+![CROMA workflow](workflow.png)
+
+
+
+## Features
+
+CROMA includes the following physical processes:
+
 - Coulomb cooling
-- Synchrotron, inverse-Compton, bremsstrahlung losses
-- Adiabatic compression/expansion
-- pp hadronic losses and secondaries
-- Stochastic reacceleration (Fermi II) via `ASA` or `TTD`
-- DSA (Fermi I) models
+- Synchrotron, inverse-Compton, and bremsstrahlung losses
+- Adiabatic compression and expansion
+- Hadronic \(pp\) losses and secondary-particle production
+- Stochastic reacceleration (Fermi II), including ASA and TTD models
+- Diffusive shock acceleration (Fermi I)
 
-Outputs:
-- CR spectra
+The code can output:
+
+- CR electron and proton spectra
 - Synchrotron emissivity
-- Hadronic gamma-ray/neutrino emissivity
+- Inverse-Compton emission
+- Hadronic gamma-ray emission
+- Hadronic neutrino emission
 
-## Tracer Mode
+Parallel execution is supported through:
 
-### Executables
+- MPI + OpenMP on CPUs
+- MPI + CUDA on NVIDIA GPUs
 
-- `croma.out`: MPI tracer pipeline on the shared-core CPU backend
-- `croma_fp.out`: alias build of the CPU tracer pipeline
-- `croma_cuda`: CUDA + MPI tracer pipeline with bucketed batched solves
-- `tracer_fp_cpu.out` and `tracer_fp_cuda.out`: compatibility/legacy
+## Requirements
 
-### Input Data
+The CPU backend requires:
 
-Tracer mode supports two input modes:
-- `input_mode = hdf5`: production tracer snapshots
-- `input_mode = synthetic`: generated test background without tracer HDF5 input (for debug)
+- C compiler
+- MPI
+- OpenMP
+- HDF5
+- GSL
 
-The HDF5 path consumes per-snapshot files with one row per tracer:
+The CUDA backend additionally requires:
+
+- NVIDIA CUDA Toolkit
+- A CUDA-capable NVIDIA GPU
+
+## Building CROMA
+
+Source files are located in `src/`, and header files are located in `include/`.
+
+The Makefile can be configured through standard Make variables or through an optional local configuration file:
+
+```text
+config_local.mk
+```
+
+This file can be used to specify machine-dependent compiler, library, and CUDA settings without modifying the main Makefile.
+
+### CPU backend
+
+The default Make target builds the CPU executable:
+
+```bash
+make
+```
+
+or equivalently:
+
+```bash
+make croma.out
+```
+
+The resulting executable is:
+
+```text
+croma.out
+```
+
+### CUDA backend
+
+To build the CUDA executable:
+
+```bash
+make croma_cuda
+```
+
+The resulting executable is:
+
+```text
+croma_cuda
+```
+
+Machine-dependent compiler, library, and CUDA settings can be specified in `config_local.mk` or overridden through Make variables.
+
+### Cleaning the build
+
+```bash
+make clean
+```
+
+## Input data
+
+CROMA primarily operates on tracer-particle histories extracted from MHD simulations.
+
+For HDF5 input, each snapshot contains one row per tracer and includes quantities such as
 
 ```text
 tracer_dump_NNNN.h5
@@ -49,174 +120,154 @@ tracer_dump_NNNN.h5
 └── Redshift                        scalar
 ```
 
+The code also provides a synthetic-input mode for testing without tracer HDF5 files.
 
+The input mode is selected in the parameter file:
 
-### Background Modes
-
-- `frozen_background = 0`: normal evolving tracer history 
-- `frozen_background = 1`: reuse snapshot-0 background fields across the whole run (mostly for a debug purpose)
-
-CLI override:
-
-```bash
-croma.out [params_file]
-or
-croma.out [params_file] [background_mode]
+```text
+input_mode = hdf5
 ```
 
-`background_mode` accepts `evolving` or `frozen`.
+or
 
-For `input_mode = hdf5` with `frozen_background = 1`, the code reads only the initial snapshot and derives the runtime from `t_fp_total` and `n_fp_out`.
+```text
+input_mode = synthetic
+```
 
-## Launching Runs
+## Running CROMA
 
-### Direct Tracer Binaries
+A parameter file is supplied as the first command-line argument.
+
+### CPU
+
+For example, using four MPI ranks:
 
 ```bash
-mpirun -np 4 ./croma_cuda params.txt
 mpirun -np 4 ./croma.out params.txt
 ```
 
-Backend selection comes from the parameter file:
+### CUDA
 
-```text
-backend = auto | cpu | cuda
+For example, using four MPI ranks / GPUs:
+
+```bash
+mpirun -np 4 ./croma_cuda params.txt
 ```
 
-Reacceleration mode is also parameter-driven:
+For the CUDA backend, the intended production configuration is one MPI rank per GPU.
+
+The backend can also be specified in the parameter file:
 
 ```text
-Dpp_mode = asa | ttd | direct_tacc | off
+backend = auto
+```
+
+with the available choices
+
+```text
+auto | cpu | cuda
+```
+
+## Basic configuration
+
+Some of the main runtime options are summarized below.
+
+### CR populations
+
+The initial CR species are selected with
+
+```text
+seed_cr_species = electron_only
+```
+
+with the available choices
+
+```text
+electron_only | proton_only | electron_proton
+```
+
+Secondary electrons can still be produced in proton-seeded calculations through hadronic interactions.
+
+### Stochastic reacceleration
+
+The reacceleration model is selected with
+
+```text
+Dpp_mode = asa
+```
+
+with the available choices
+
+```text
+asa | ttd | direct_tacc | off
+```
+
+For a prescribed acceleration time, for example:
+
+```text
+Dpp_mode = direct_tacc
 t_acc_direct_gyr = 0.3
 ```
 
-Initial CR species are selected with:
+### Magnetic field
+
+The magnetic-field model is selected with
 
 ```text
-seed_cr_species = electron_only | proton_only | electron_proton
-```
-Note that secondary electrons emerge even when the initial population is proton_only.
-
-## Job Splitting and MPI Layout
-
-For memory-limited production runs, the safest pattern is one `job_index` chunk per launch with a dedicated output directory for each chunk.
-
-The CUDA tracer path also supports multi-job execution above MPI. Set `job_parallel_enabled = 1` with `job_count > 1` to split `MPI_COMM_WORLD` into independent jobs, or configure `CROMA_NUM_JOBS` / `CROMA_JOB_SIZE` in the environment. 
-
-`job_parallel_enabled=1` is currently incompatible with `load_balancing=1`. Load balancing still uses global MPI collectives internally, so the executable rejects that combination instead of mixing independent jobs.
-
-Example:
-
-```bash
-# params.txt contains job_count = 4 and job_parallel_enabled = 1
-mpirun -np 8 ./croma_cuda params.txt
+bfield_mode = sim
 ```
 
-
-## Run-mode and Output
-
-The tracer path reads `file_output_mode` from the parameter file:
+with the available choices
 
 ```text
-file_output_mode = write | nowrite | bucketstats | load_estimate
+sim | max | dyn
 ```
 
-Supported modes:
-- `write`: normal CR and emission outputs
-- `nowrite`: run the solve without writing science outputs
+### Output mode
 
-for debug and scaling tests
-- `bucketstats`: write bucket diagnostics instead of CR/emission products
-- `load_estimate`: estimate tracer cost, write load-balance reports, and exit before the FP solve, this must be run with exactly one MPI rank.
+The standard science-output mode is
 
-Typical output files in `write` mode:
-- `CRE_coreNN.bin`
-- `CRP_coreNN.bin` when `write_crp_output = 1`
-- `eSyn_coreNN.bin`
-- `eIC_coreNN.bin` when `write_ic_output = 1`
-- `eGamma_coreNN.bin` when `write_gamma_output = 1` and CR protons are enabled
-- `eNu_coreNN.bin` when `write_neutrino_output = 1` and CR protons are enabled
-- `timing_coreNNN.tsv`
-- `run_summary.tsv`
-
-
-
-
-## Build
-
-Source files live under `src/`; headers live under `include/`. The top-level
-Makefile still writes object files and executables to the repository root.
-
-
-### Dependencies
-
-```makefile
-CC     = gcc
-LDLIBS = -lm -lgsl -lmpi -lhdf5 -fopenmp
-
-NVCC = nvcc
-CUDA_ARCH = sm_75
+```text
+file_output_mode = write
 ```
 
-## Parameters
+Additional modes are available for performance testing and diagnostics:
 
-### Run and Input
+```text
+nowrite | bucketstats | load_estimate
+```
 
-- `output_dir`: directory for CR spectra, emission products, timings, and reports.
-- `N_TRACERS`: number of tracer rows to process from each snapshot. 
-- `input_mode`: `hdf5` for tracer snapshot files, or `synthetic` for generated debug backgrounds.
-- `tracer_file_dir`, `tracer_filename_base1`, `tracer_filename_base2`,
-  `tracer_file_extension`: HDF5 input names.
-- `nsnp_i`, `nsnp_f`, `nsnp_start`: first snapshot, final snapshot, and start snapshot index. 
+## Outputs
+
+Depending on the selected configuration, CROMA produces files containing CR spectra and non-thermal emission.
+
+Typical outputs include:
+
+```text
+CRE_coreNN.bin
+CRP_coreNN.bin
+eSyn_coreNN.bin
+eIC_coreNN.bin
+eGamma_coreNN.bin
+eNu_coreNN.bin
+timing_coreNNN.tsv
+run_summary.tsv
+```
+
+Only outputs enabled in the parameter file are written.
+
+## Parallel execution and load balancing
+
+Tracer particles evolve independently during each local FP update and are distributed across MPI ranks.
+
+CROMA provides cost-based load balancing to reduce workload imbalance caused by variations in the number of FP substeps required by individual tracers.
+
+Large tracer datasets can also be divided into independent job chunks using `job_count` and `job_index`.
+
+More advanced execution modes, including MPI job splitting and diagnostic runs, are intended primarily for large production calculations.
 
 
-### Backend and Parallel Layout
+## Developers
+Kosuke Nishiwaki, INAF-IRA
 
-- `backend`: `auto`, `cpu`, or `cuda`. `auto` uses CUDA only when the executable was built with CUDA.
-- `job_count`, `job_index`: split a large tracer set into independent chunks.
-  `job_index` is zero-based.
-- `job_parallel_enabled`: split `MPI_COMM_WORLD` into independent jobs in one launch. This is currently incompatible with `load_balancing = 1`.
 
-### Output Control
-
-- `file_output_mode`: `write`, `nowrite`, `bucketstats`, or `load_estimate`.
-- `synch_output_spec`: synchrotron output cadence. Accepted values are `all`, `none`, `final`, `every:N`, or `steps:i,j,k` where step numbers are one-based.
-- `write_buffer_mode`: `tile`, `mapped`, or `buffered`. `tile` is the preferred production mode for bounded memory use.
-- `write_buffer_chunk_snapshots`: number of snapshots per tiled output flush.
-- `write_crp_output`: write CR proton spectra when set to `1`.
-- `write_ic_output`: write inverse-Compton spectra from CR electrons when set to `1`.
-- `write_gamma_output`, `write_neutrino_output`: write hadronic gamma-ray and neutrino spectra when set to `1`; CR protons must also be enabled.
-
-### CR Population and FP Coefficients
-
-- `seed_cr_species`: `electron_only`, `proton_only`, or `electron_proton`.
-  Secondary electrons can still be generated in proton-seeded runs.
-- `InjectionModel`, `steady_primary_electron_injection`, `delta_CR_inj`,
-  `phi_CRe`, `phi_CRp`, `pinjmin`, `pinjmax`, `peinjmin`, `peinjmax`: initial and steady injection model controls.
-- `Dpp_mode`: `asa`, `ttd`, `direct_tacc`, or `off` for stochastic
-  reacceleration. Legacy aliases `tacc` and `direct` are also accepted for the direct acceleration-time path.
-- `mach_limit`, `psi`: turbulence/reacceleration model parameters.
-- `L_turb_target_kpc`: target turbulence scale used to rescale tracer
-  turbulence for ASA/TTD and dynamo-field calculations; defaults to `150` kpc.
-- `tracer_nsub_safety`: safety factor for adaptive subcycling.
-- `coeff_interp_min_steps`, `coeff_interp_max_segments`: controls for
-  interpolation of time-dependent coefficients between tracer snapshots.
-
-### Magnetic Field, Emission, and DSA
-
-- `bfield_mode`: `max`, `sim`, or `dyn`. `max` uses the maximum-field recipe, `sim` uses the simulation magnetic field, and `dyn` enables the dynamo model.
-- `eta_B`: magnetic-field model normalization used by the `max`/dynamo paths.
-- `nu_min_s`, `nu_max_s`, `synch_logb_min`, `synch_logb_max`,
-  `adaptive_synch_logb`, `synch_N_theta`: synchrotron frequency and lookup-table controls.
-- `nu_min_ic`, `nu_max_ic`, `E_gamma_min`, `E_gamma_max`, `E_nu_min`,
-  `E_nu_max`: inverse-Compton, gamma-ray, and neutrino ranges. Inverse-Compton uses a `log10(nu/Hz)` frequency grid; gamma-ray and neutrino spectral energy grids are `log10(E/GeV)`.
-- `DSAInjectionMode`: `off`, `tracer_state`, or `tracer_source`.
-- `DSAReaccMode`: `off`, `positive_delta`, or `convolution`. DSA reacceleration requires DSA injection to be enabled.
-- `DSAInjectSpecies`, `DSAEtaModelInitial`, `DSAEtaModelReacc`, `DSAChiP`,
-  `DSAChiE`, `DSAKep`, `DSAPmaxPmc`, `DSAPmaxEmc`, `DSAMinMach`,
-  `DSAGammaGas`, `DSAXcrPminPmc`, `DSAReaccEtaCap`: DSA efficiency, injection, cutoff, and gas-model parameters.
-
-### Load Balancing and Diagnostics
-
-- `load_balancing`: enable cost-based tracer redistribution across MPI ranks.
-- `load_balance_top_frac`: fraction of the heaviest tracers used to build the load-balance plan; must be in `(0, 1]`.
