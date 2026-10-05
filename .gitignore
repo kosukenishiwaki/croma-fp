@@ -49,7 +49,6 @@ gpu_consistency_tests/
 *.dat
 *.log
 *.pdf
-*.png
 *.csv
 *.tsv
 
