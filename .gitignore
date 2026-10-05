@@ -1,0 +1,66 @@
+# OS/editor metadata
+.DS_Store
+.vscode/
+
+# Build products
+*.o
+*.out
+*.so
+*.a
+*.dylib
+*.pch
+libtracer_fp.so
+tracer_fp_cpu.out
+tracer_fp_cuda.out
+croma.out
+croma_fp.out
+croma_cuda
+fp_cpu.out
+fp_cuda.out
+mesh_fp*.out
+
+# Python local state
+venv/
+__pycache__/
+*.py[cod]
+*.ipynb
+
+# Local configuration and secrets
+.env
+*.key
+*.pem
+*.token
+config_local.mk
+config_macm3.mk
+config_leo.mk
+config_colab.mk
+
+# Generated run data and local experiments
+test_out/
+benchmarks/results/
+notebooks/
+paper/
+streamlit*/
+legacy/
+examples/
+gpu_consistency_tests/
+
+# Generated analysis artifacts
+*.dat
+*.log
+*.pdf
+*.png
+*.csv
+*.tsv
+
+
+# Local parameter sweeps and machine-specific scripts
+params_*
+*.sbatch
+
+
+
+# Scratch/debug files
+tests/
+/dev_eta_fixed_reacc_model.md
+/docs/fp_shared_core_notes.md
