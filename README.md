@@ -138,6 +138,12 @@ input_mode = synthetic
 
 A parameter file is supplied as the first command-line argument.
 
+Two public example parameter files are included:
+
+- `params.txt` is a small smoke test that generates synthetic/artificial backgound data.
+- `params_tracer_10k.txt` runs the same physical model on the 10,000 public
+  tracer histories in `tracer_10k/` (snapshots 25 through 124).
+
 ### CPU
 
 For example, using four MPI ranks:

@@ -55,6 +55,7 @@ gpu_consistency_tests/
 
 # Local parameter sweeps and machine-specific scripts
 params_*
+!params_tracer_10k.txt
 *.sbatch
 
 

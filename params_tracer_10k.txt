@@ -1,0 +1,87 @@
+# example using the tracer histories in ./tracer_10k/.
+
+######## Run ########
+strmodel = ./croma_tracer_10k_output
+N_TRACERS = 10000
+variable_tracer_mass = 1
+
+backend = auto
+input_mode = hdf5
+nfreq = 128
+synch_output_spec = all
+file_output_mode = write
+write_buffer_mode = tile
+write_crp_output = 0
+integration_mode = quantized
+
+job_count = 1
+job_index = 0
+job_parallel_enabled = 0
+
+######## Tracer input ########
+tracer_file_dir = ./tracer_10k/
+tracer_file_extension = .h5
+tracer_filename_base1 = subset__tracer_z_dump
+tracer_filename_base2 =
+
+######## Parallelism ########
+MPI = 1
+OMP = 1
+NUM_THREADS = 1
+
+######## Runtime ########
+# nsnp_f is exclusive: this reads snapshots 25 through 124.
+nsnp_i = 25
+nsnp_f = 125
+nsnp_start = 25
+load_balancing = 1
+load_balance_chunk_size = 0
+load_balance_diagnostics = 0
+load_balance_top_frac = 0.001
+tracer_nsub_safety = 0.5
+
+######## Momentum grids ########
+pmin = -1.0
+pmax = 8.0
+pemin = -0.5
+pemax = 6.0
+
+######## CR model ########
+seed_cr_species = electron_only
+InjectionModel = 0
+delta_CR_inj = 2.2
+pinjmin = 1.0
+pinjmax = 1.0e6
+peinjmin = 10.0
+peinjmax = 1.0e9
+phi_CRe = 1.0e-6
+
+######## Fokker--Planck coefficients ########
+Dpp_mode = asa
+reacc_window_mode = 1
+mach_limit = 0.5
+psi = 0.5
+eta_dpp_cap = 0.1
+
+######## Magnetic field ########
+bfield_mode = max
+eta_B = 0.05
+
+######## DSA ########
+DSAInjectionMode = off
+DSAReaccMode = off
+
+######## Emission ########
+nu_min_s = 5.5
+nu_max_s = 10.5
+synch_logb_min = -6.0
+synch_logb_max = 2.0
+synch_N_theta = 512
+nu_min_ic = 13.0
+nu_max_ic = 28.0
+E_brem_min = -6.0
+E_brem_max = 10.0
+E_gamma_min = -2.0
+E_gamma_max = 6.0
+E_nu_min = -2.0
+E_nu_max = 8.0
