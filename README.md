@@ -64,6 +64,12 @@ config_local.mk
 
 This file can be used to specify machine-dependent compiler, library, and CUDA settings without modifying the main Makefile.
 
+You can select a　different configuration file explicitly:
+
+```bash
+make CONFIG=/path/to/your_config.mk
+```
+
 ### CPU backend
 
 The default Make target builds the CPU executable:

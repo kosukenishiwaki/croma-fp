@@ -30,7 +30,6 @@ __pycache__/
 *.key
 *.pem
 *.token
-config_local.mk
 config_macm3.mk
 config_leo.mk
 config_colab.mk
